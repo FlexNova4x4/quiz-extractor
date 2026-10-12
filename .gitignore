@@ -1,0 +1,13 @@
+.env
+.*.env
+bot.env
+*.session
+*.session-journal
+__pycache__/
+*.py[cod]
+*.log
+state.json
+downloads/
+output/
+*.txt
+!requirements.txt
