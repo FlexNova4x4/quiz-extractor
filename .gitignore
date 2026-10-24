@@ -3,11 +3,16 @@
 bot.env
 *.session
 *.session-journal
+*.session*
 __pycache__/
 *.py[cod]
 *.log
 state.json
+jobs_state.json
 downloads/
 output/
+QuizExports/
+.pytest_cache/
+.coverage
 *.txt
 !requirements.txt
