@@ -94,7 +94,7 @@ def format_question_block(
     """
     options = [opt.strip() for opt in question.options if opt is not None]
     explanation = (question.explanation or "").strip()
-    exp_line = f"EXP: {explanation}" if explanation else "EXP: Not available"
+    exp_line = f"EXP: {explanation}" if explanation else "EXP:"
 
     if len(options) != 4:
         # Must be sent to manual review

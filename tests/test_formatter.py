@@ -60,7 +60,7 @@ def test_format_question_missing_answer_and_explanation():
         "(C) Yamuna\n"
         "(D) Godavari\n"
         "ANSWER: UNKNOWN\n"
-        "EXP: Not available\n\n"
+        "EXP:\n\n"
     )
     assert valid_block == expected
 
@@ -154,7 +154,7 @@ def test_quiz_file_writer_full_workflow(tmp_path: Path):
 
     # Rule 6: Explanation
     assert "EXP: Exp 1" in content
-    assert "EXP: Not available" in content
+    assert "EXP:" in content
 
     # Check Manual Review content
     rev_content = rev_path.read_text(encoding="utf-8")

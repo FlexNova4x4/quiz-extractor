@@ -128,23 +128,30 @@ def parse_quiz_input(raw_text: str) -> Optional[Tuple[str, str, int, str]]:
 
 
 def extract_explanation_from_poll(media: Any) -> Optional[str]:
-    """
-    Extracts explanation text from Telegram poll media if present.
-    """
+    """Read a quiz explanation from Telegram poll results when available."""
     if not media:
         return None
 
-    # Check poll object directly
+    results_obj = getattr(media, "results", None)
+    solution = getattr(results_obj, "solution", None) if results_obj else None
+    if solution:
+        value = clean_str(solution)
+        if value:
+            return value
+
     poll_obj = getattr(media, "poll", None)
     if poll_obj:
-        exp = getattr(poll_obj, "explanation", None)
-        if exp:
-            return clean_str(exp)
+        explanation = getattr(poll_obj, "explanation", None)
+        if explanation:
+            value = clean_str(explanation)
+            if value:
+                return value
 
-    # Check media root
-    exp = getattr(media, "explanation", None)
-    if exp:
-        return clean_str(exp)
+    explanation = getattr(media, "explanation", None)
+    if explanation:
+        value = clean_str(explanation)
+        if value:
+            return value
 
     return None
 

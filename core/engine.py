@@ -61,6 +61,23 @@ def get_message_buttons(message: Any) -> List[Tuple[int, int, str, Any]]:
     return out
 
 
+def extract_quiz_title(text: str) -> str:
+    """Extract a title from common QuizBot title-message formats."""
+    text = clean_str(text)
+    patterns = (
+        r"""(?is)\bQuiz\s+['‘"“](.+?)['’"”]""",
+        r"(?im)^\s*(?:Quiz\s+Name|Title)\s*:\s*(.+?)\s*$",
+        r"(?im)^\s*Quiz\s*:\s*(.+?)\s*$",
+    )
+    for pattern in patterns:
+        match = re.search(pattern, text)
+        if match:
+            title = match.group(1).strip().strip(" \t\r\n\"'‘’“”")
+            if title:
+                return title
+    return ""
+
+
 class TelethonEngine:
     """
     Main extraction engine utilizing Telethon MTProto client.
@@ -404,6 +421,21 @@ class TelethonEngine:
                     continue
 
                 text = clean_str(msg.raw_text)
+                if job is not None:
+                    if not job.title:
+                        detected_title = extract_quiz_title(text)
+                        if detected_title:
+                            job.title = detected_title
+                    if not job.expected_questions:
+                        count_match = re.search(
+                            r"(?i)(?:\b(\d+)\s+questions?\b|"
+                            r"\bquestions?\s*[:：]\s*(\d+))",
+                            text,
+                        )
+                        if count_match:
+                            job.expected_questions = int(
+                                count_match.group(1) or count_match.group(2)
+                            )
                 low_text = text.lower()
 
                 # Handle "you already took this quiz" -> Try again
@@ -707,12 +739,6 @@ class TelethonEngine:
                 except Exception as e:
                     logger.debug(f"Listener error: {e}")
 
-            export_dir = get_export_dir()
-            writer = QuizFileWriter(
-                export_dir=export_dir,
-                title=job.title,
-                fallback_id=job.payload,
-            )
 
             try:
                 # 1. Setup and Start Quiz based on Provider
@@ -802,6 +828,52 @@ class TelethonEngine:
 
                 else:
                     raise ValueError(f"Unsupported provider: {job.provider}")
+
+                # Resolve title and question count before creating the TXT file.
+                if job.provider == "quizbot" and (
+                    not job.title or not job.expected_questions
+                ):
+                    try:
+                        title_messages = await self.safe_get_messages(
+                            bot_entity, limit=30, job=job,
+                            status_callback=status_callback,
+                        )
+                        for candidate in reversed(title_messages or []):
+                            if getattr(candidate, "id", 0) <= run_after_id:
+                                continue
+                            candidate_text = clean_str(
+                                getattr(candidate, "raw_text", "")
+                            )
+                            if not job.title:
+                                detected_title = extract_quiz_title(candidate_text)
+                                if detected_title:
+                                    job.title = detected_title
+                            if not job.expected_questions:
+                                count_match = re.search(
+                                    r"(?i)(?:\b(\d+)\s+questions?\b|"
+                                    r"\bquestions?\s*[:：]\s*(\d+))",
+                                    candidate_text,
+                                )
+                                if count_match:
+                                    job.expected_questions = int(
+                                        count_match.group(1) or count_match.group(2)
+                                    )
+                            if job.title and job.expected_questions:
+                                break
+                    except Exception as exc:
+                        logger.debug("Quiz metadata lookup failed: %s", type(exc).__name__)
+
+                if job.provider == "quizbot" and not job.title:
+                    logger.warning(
+                        "Quiz title was not present in QuizBot messages; using ID fallback."
+                    )
+
+                export_dir = get_export_dir()
+                writer = QuizFileWriter(
+                    export_dir=export_dir,
+                    title=job.title,
+                    fallback_id=job.payload,
+                )
 
                 # 2. Main Question Extraction Loop
                 target_total = job.expected_questions or 9999

@@ -153,3 +153,18 @@ def test_parse_poll_message_without_correct_answer():
     assert q is not None
     assert q.correct_indexes == []
     assert q.explanation is None
+
+    
+def test_extract_explanation_uses_poll_results_solution():
+    class ResultsWithSolution:
+        solution = "Explanation revealed by Telegram."
+        results = []
+
+    poll = DummyPoll("Question?", [])
+    media = DummyPollMedia(
+        poll=poll, results=ResultsWithSolution(), explanation=None
+    )
+
+    assert extract_explanation_from_poll(media) == (
+        "Explanation revealed by Telegram."
+    )
