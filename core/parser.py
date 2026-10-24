@@ -13,6 +13,11 @@ QUIZBOT_TG_URI_PATTERN = re.compile(
     re.IGNORECASE,
 )
 
+QUIZBOT_INLINE_PATTERN = re.compile(
+    r"@?QuizBot\s+quiz:([A-Za-z0-9_-]+)",
+    re.IGNORECASE,
+)
+
 # Regex patterns for Advance Quiz Bot
 ADVANCE_URL_PATTERN = re.compile(
     r"(?:https?://)?(?:t\.me|telegram\.me)/advance_quiz_bot\?start=([A-Za-z0-9_-]+)",
@@ -50,7 +55,12 @@ def parse_quiz_input(raw_text: str) -> Optional[Tuple[str, str, int, str]]:
         return None
 
     # 1. Check for QuizBot link
-    qb_match = QUIZBOT_URL_PATTERN.search(text) or QUIZBOT_TG_URI_PATTERN.search(text)
+    qb_inline_match = QUIZBOT_INLINE_PATTERN.search(text)
+    qb_match = (
+        QUIZBOT_URL_PATTERN.search(text)
+        or QUIZBOT_TG_URI_PATTERN.search(text)
+        or qb_inline_match
+    )
     if qb_match:
         payload = qb_match.group(1)
         count_match = re.search(r"(\d+)\s+questions\b", text, re.IGNORECASE)
@@ -59,7 +69,7 @@ def parse_quiz_input(raw_text: str) -> Optional[Tuple[str, str, int, str]]:
         title_match = re.search(r"Quiz\s+['‘](.*?)['’]", text, re.DOTALL | re.IGNORECASE)
         title = title_match.group(1).strip() if title_match else ""
 
-        if not title:
+        if not title and not qb_inline_match:
             # Fallback title check
             first_line = text.splitlines()[0].strip()
             if "t.me" not in first_line and len(first_line) > 3:
