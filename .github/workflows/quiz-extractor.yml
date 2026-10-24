@@ -54,7 +54,7 @@ jobs:
         run: |
           set +e
           timeout --signal=INT --kill-after=30s \
-            21000s python bot_interface.py
+            21000s python -c 'import logging,runpy; logging.getLogger("httpx").setLevel(logging.WARNING); runpy.run_path("bot_interface.py",run_name="__main__")'
           status=$?
 
           if [ "$status" -eq 124 ] || \
