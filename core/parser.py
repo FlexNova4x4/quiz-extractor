@@ -14,7 +14,7 @@ QUIZBOT_TG_URI_PATTERN = re.compile(
 )
 
 QUIZBOT_INLINE_PATTERN = re.compile(
-    r"@?QuizBot\s+quiz:([A-Za-z0-9_-]+)",
+    r"(?:@?QuizBot\s+)?quiz:([A-Za-z0-9_-]+)",
     re.IGNORECASE,
 )
 
@@ -72,7 +72,7 @@ def parse_quiz_input(raw_text: str) -> Optional[Tuple[str, str, int, str]]:
         if not title and not qb_inline_match:
             # Fallback title check
             first_line = text.splitlines()[0].strip()
-            if "t.me" not in first_line and len(first_line) > 3:
+            if "t.me" not in first_line and "quiz:" not in first_line.lower() and len(first_line) > 3:
                 title = first_line
 
         return "quizbot", payload, count, title
