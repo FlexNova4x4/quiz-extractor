@@ -127,15 +127,76 @@ def parse_quiz_input(raw_text: str) -> Optional[Tuple[str, str, int, str]]:
     return None
 
 
+def clean_explanation(value: Any) -> Optional[str]:
+    """Remove promotional channel joins and author credits from explanations."""
+    import re
+
+    if not value:
+        return None
+
+    text = clean_str(value)
+    if not text:
+        return None
+
+    cleaned_lines = []
+
+    for raw_line in text.splitlines():
+        line = raw_line.strip()
+        if not line:
+            continue
+
+        # Remove standalone promotional messages and author credits.
+        if (
+            re.match(r"^(?:join|subscribe|follow|visit)\b", line, re.I)
+            and re.search(r"@[\w\d_]+|(?:https?://)?(?:t\.me|telegram\.me)/", line, re.I)
+        ):
+            continue
+
+        if (
+            re.match(r"^(?:by|author|created\s+by|credit)\b", line, re.I)
+            and re.search(r"@[\w\d_]+|(?:https?://)?(?:t\.me|telegram\.me)/", line, re.I)
+        ):
+            continue
+
+        if re.fullmatch(r"@[\w\d_]{2,}", line):
+            continue
+
+        if re.fullmatch(r"(?:https?://)?(?:t\.me|telegram\.me)/\S+", line, re.I):
+            continue
+
+        # Remove promotional text appended to a genuine explanation.
+        line = re.sub(
+            r"\s+(?:[|•\-–—]\s*)?(?:join|subscribe|follow)\b.*$",
+            "",
+            line,
+            flags=re.I,
+        )
+        line = re.sub(
+            r"\s+(?:[|•\-–—]\s*)?(?:by|author|created\s+by|credit)\s*:?\s*@[\w\d_]+\s*$",
+            "",
+            line,
+            flags=re.I,
+        )
+
+        line = line.strip()
+        if line:
+            cleaned_lines.append(line)
+
+    result = "\n".join(cleaned_lines).strip()
+    result = re.sub(r"\n{3,}", "\n\n", result)
+
+    return result or None
+
+
 def extract_explanation_from_poll(media: Any) -> Optional[str]:
-    """Read a quiz explanation from Telegram poll results when available."""
+    """Read and clean a quiz explanation from Telegram poll results."""
     if not media:
         return None
 
     results_obj = getattr(media, "results", None)
     solution = getattr(results_obj, "solution", None) if results_obj else None
     if solution:
-        value = clean_str(solution)
+        value = clean_explanation(solution)
         if value:
             return value
 
@@ -143,13 +204,13 @@ def extract_explanation_from_poll(media: Any) -> Optional[str]:
     if poll_obj:
         explanation = getattr(poll_obj, "explanation", None)
         if explanation:
-            value = clean_str(explanation)
+            value = clean_explanation(explanation)
             if value:
                 return value
 
     explanation = getattr(media, "explanation", None)
     if explanation:
-        value = clean_str(explanation)
+        value = clean_explanation(explanation)
         if value:
             return value
 
